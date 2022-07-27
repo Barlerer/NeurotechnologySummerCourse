@@ -5,3 +5,6 @@ Project was made by:
 - Michaela Alarie
 - Meir Remy
 - Bar Lerer
+
+### Conda installation
+If you are running from a Conda enviroment, make sure to add the proper channels for the requirements, or use pip.

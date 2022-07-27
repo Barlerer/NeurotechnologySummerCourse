@@ -2,7 +2,8 @@ import numpy as np
 from pylsl import StreamInlet, resolve_stream
 import time
 import pandas as pd
-
+from mne_features.feature_extraction import FeatureExtractor
+ 
 
 def power_spectrum(signal, timestamps):
     dt = np.mean(np.diff(timestamps))
@@ -20,7 +21,7 @@ def power_spectrum(signal, timestamps):
 
 def save_stream(name: str) -> None:
     # Parameter to define the experiment time, in seconds
-    recording_length = 120
+    recording_length = 4
     # first resolve an EEG stream on the lab network
     print("looking for an EEG stream...")
     streams = resolve_stream('type', 'EEG')
@@ -35,9 +36,15 @@ def save_stream(name: str) -> None:
     data = np.array(data)
     timestamps = np.expand_dims(np.array(timestamps), axis=-1)
     # Save the data to csv
-    pd.DataFrame(np.hstack((timestamps, data))).to_csv(f'data/{name}.csv')
+    pd.DataFrame(np.hstack((timestamps, data))).to_csv(f'data/{name}.csv', index=False)
     print("Data saved")
 
 
+def proccess_stream(data_path: str,sampling_frequency:int = 200) -> None:
+    data = pd.read_csv(data_path, header=1, index_col=False).to_numpy(dtype=np.float32)
+    fe = FeatureExtractor(sfreq=sampling_frequency, selected_funcs=['std'])
+
+
 if __name__ == "__main__":
-    save_stream('test_run')
+    # save_stream('test_run')
+    proccess_stream('data/test_run.csv')
