@@ -41,7 +41,14 @@ def save_stream(name: str) -> None:
 
 
 def proccess_stream(data_path: str,sampling_frequency:int = 200) -> None:
-    data = pd.read_csv(data_path, header=1, index_col=False).to_numpy(dtype=np.float32)
+    raw_data = pd.read_csv("data/test_run.csv", index_col=[0])
+    raw_data = raw_data.drop('0', axis=1).to_numpy()
+    data_lenght = raw_data.shape[0]
+    window_size_in_sec = 2
+    sampling_rate = 200  # Hz
+    num_of_windows = round(data_lenght / (window_size_in_sec * sampling_rate))
+    windows = np.array_split(raw_data, num_of_windows)
+    data = windows.to_numpy(dtype=np.float32)
     fe = FeatureExtractor(sfreq=sampling_frequency, selected_funcs=['std'])
 
 
