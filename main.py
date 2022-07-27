@@ -1,23 +1,8 @@
 import numpy as np
 from pylsl import StreamInlet, resolve_stream
-import matplotlib.pyplot as plt
-# first resolve an EEG stream on the lab network
-print("looking for an EEG stream...")
-streams = resolve_stream('type', 'EEG')
-
+import time
+import pandas as pd
 # create a new inlet to read from the stream
-inlet = StreamInlet(streams[0])
-data = []
-timestamps = []
-sample_points = 200
-for _ in range(sample_points):
-    sample, timestamp = inlet.pull_sample()
-    data.append(sample)
-    timestamps.append(timestamp)
-
-
-data = np.array(data)
-timestamps = np.array(timestamps)
 
 
 def power_spectrum(signal, timestamps):
@@ -34,4 +19,26 @@ def power_spectrum(signal, timestamps):
     return freq[L], PSD[L] / n
 
 
-freq, PSD = power_spectrum(data, timestamps)
+def save_stream(name: str) -> None:
+    # Parameter to define the experiment time, in seconds
+    recording_length = 120
+    # first resolve an EEG stream on the lab network
+    print("looking for an EEG stream...")
+    streams = resolve_stream('type', 'EEG')
+    inlet = StreamInlet(streams[0])
+    data = []
+    timestamps = []
+    start_time = time.time()
+    while time.time() - start_time <= recording_length:
+        sample, timestamp = inlet.pull_sample()
+        data.append(sample)
+        timestamps.append(timestamp)
+    data = np.array(data)
+    timestamps = np.expand_dims(np.array(timestamps), axis=-1)
+    # Save the data to csv
+    pd.DataFrame(np.hstack((timestamps, data))).to_csv(f'data/{name}.csv')
+    print("Data saved")
+
+
+if __name__ == "__main__":
+    save_stream('test_run')
