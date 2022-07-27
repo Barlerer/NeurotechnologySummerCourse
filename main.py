@@ -2,7 +2,6 @@ import numpy as np
 from pylsl import StreamInlet, resolve_stream
 import time
 import pandas as pd
-# create a new inlet to read from the stream
 
 
 def power_spectrum(signal, timestamps):
