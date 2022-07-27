@@ -21,7 +21,7 @@ def power_spectrum(signal, timestamps):
 
 def save_stream(name: str) -> None:
     # Parameter to define the experiment time, in seconds
-    recording_length = 4
+    recording_length = 120
     # first resolve an EEG stream on the lab network
     print("looking for an EEG stream...")
     streams = resolve_stream('type', 'EEG')
@@ -41,14 +41,13 @@ def save_stream(name: str) -> None:
 
 
 def proccess_stream(data_path: str,sampling_frequency:int = 200) -> None:
-    raw_data = pd.read_csv("data/test_run.csv", index_col=[0])
-    raw_data = raw_data.drop('0', axis=1).to_numpy()
-    data_lenght = raw_data.shape[0]
+    raw_data = pd.read_csv("data/test_run.csv")
+    raw_data = raw_data.drop('0', axis=1).to_numpy().T
+    data_lenght = raw_data.shape[1]
     window_size_in_sec = 2
-    sampling_rate = 200  # Hz
-    num_of_windows = round(data_lenght / (window_size_in_sec * sampling_rate))
-    windows = np.array_split(raw_data, num_of_windows)
-    data = windows.to_numpy(dtype=np.float32)
+    num_of_windows = round(data_lenght / (window_size_in_sec * sampling_frequency))
+    windows = np.array_split(raw_data, num_of_windows,axis=1)
+    data = np.stack(windows)
     fe = FeatureExtractor(sfreq=sampling_frequency, selected_funcs=['std'])
 
 
