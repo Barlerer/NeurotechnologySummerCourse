@@ -1,12 +1,49 @@
 import os
-import time
+from statistics import mean
 
 import numpy as np
 import pandas as pd
 from mne_features.feature_extraction import FeatureExtractor
-from pylsl import StreamInlet, resolve_stream
+from sklearn.discriminant_analysis import (LinearDiscriminantAnalysis,
+                                           QuadraticDiscriminantAnalysis)
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
 from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+
+names = [
+    "Nearest Neighbors",
+    "Linear SVM",
+    "RBF SVM",
+    "Gaussian Process",
+    "Decision Tree",
+    "Random Forest",
+    "Neural Net",
+    "AdaBoost",
+    "Naive Bayes",
+    "QDA",
+    "LDA"
+]
+
+classifiers = [
+    KNeighborsClassifier(3),
+    SVC(kernel="linear", C=0.025,probability=True),
+    SVC(gamma=2, C=1,probability=True),
+    GaussianProcessClassifier(1.0 * RBF(1.0)),
+    DecisionTreeClassifier(max_depth=5),
+    RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+    MLPClassifier(alpha=1, max_iter=1000),
+    AdaBoostClassifier(),
+    GaussianNB(),
+    QuadraticDiscriminantAnalysis(),
+    LinearDiscriminantAnalysis()
+]
+
 
 SAMPLING_FREQUENCY = 200
 LABEL = {'l':0,'r':1,'i':2}
@@ -24,34 +61,7 @@ def power_spectrum(signal, timestamps):
     return freq[L], PSD[L] / n
 
 
-def save_stream(name: str,label:str) -> None:
-    """Saves the stream to CSV file
 
-    Parameters
-    ----------
-    name : str
-        Name of the file
-    label : str
-        Should be either l,r,i
-    """
-    # Parameter to define the experiment time, in seconds
-    recording_length = 120
-    # first resolve an EEG stream on the lab network
-    print("looking for an EEG stream...")
-    streams = resolve_stream('type', 'EEG')
-    inlet = StreamInlet(streams[0])
-    data = []
-    timestamps = []
-    start_time = time.time()
-    while time.time() - start_time <= recording_length:
-        sample, timestamp = inlet.pull_sample()
-        data.append(sample)
-        timestamps.append(timestamp)
-    data = np.array(data)
-    timestamps = np.expand_dims(np.array(timestamps), axis=-1)
-    # Save the data to csv
-    pd.DataFrame(np.hstack((timestamps, data))).to_csv(f'data/{name}_{label}.csv', index=False)
-    print("Data saved")
 
 
 def proccess_stream(data_path: str,sampling_frequency:int = 200) -> np.ndarray:
@@ -72,7 +82,6 @@ def extract_features():
     return FeatureExtractor(sfreq=SAMPLING_FREQUENCY, selected_funcs=['pow_freq_bands','std'],params=params)
 
 if __name__ == "__main__":
-    # save_stream('test_run')
     # assign directory
     directory = 'data'
     
@@ -93,9 +102,12 @@ if __name__ == "__main__":
     X = np.concatenate(X)
     Y = np.concatenate(Y)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
-    classfier=SVC(probability=True)
-    classfier.fit(X_train,y_train)
-    classification_accuracy=classfier.score(X_test,y_test)
-    print(classification_accuracy)
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=1)
 
+    accuracies = []
+    for name, classfier in zip(names,classifiers):
+        classfier.fit(X_train,y_train)
+        classification_accuracy=classfier.score(X_test,y_test)
+        accuracies.append(classification_accuracy)
+        print(f"{name} Classifier has scored {classification_accuracy}")
+    print(f' Mean: {mean(accuracies)}')
