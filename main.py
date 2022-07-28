@@ -1,11 +1,15 @@
-import numpy as np
-from pylsl import StreamInlet, resolve_stream
+import os
 import time
+
+import numpy as np
 import pandas as pd
 from mne_features.feature_extraction import FeatureExtractor
+from pylsl import StreamInlet, resolve_stream
+from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 
 SAMPLING_FREQUENCY = 200
+LABEL = {'l':0,'r':1,'i':2}
 def power_spectrum(signal, timestamps):
     dt = np.mean(np.diff(timestamps))
     window_size = timestamps[-1] - timestamps[0]
@@ -51,10 +55,10 @@ def save_stream(name: str,label:str) -> None:
 
 
 def proccess_stream(data_path: str,sampling_frequency:int = 200) -> np.ndarray:
-    window_size_in_sec = 2
+    window_size_in_sec = 3
 
-    raw_data = pd.read_csv("data/test_run.csv")
-    raw_data = raw_data.drop('0', axis=1).to_numpy().T
+    raw_data = pd.read_csv(data_path)
+    raw_data = raw_data.drop(['0','1','2'], axis=1).to_numpy().T
     # This is how many sample we got
     data_len = raw_data.shape[1]
     num_of_windows = round(data_len / (window_size_in_sec * sampling_frequency))
@@ -64,24 +68,34 @@ def proccess_stream(data_path: str,sampling_frequency:int = 200) -> np.ndarray:
     return np.stack(windows)
 
 def extract_features():
-    params = {'pow_freq_bands__freq_bands': np.array([[8.,12.],[15.,25.]])}
+    params = {'pow_freq_bands__freq_bands': np.array([[8.,12.],[19.,23.]])}
     return FeatureExtractor(sfreq=SAMPLING_FREQUENCY, selected_funcs=['pow_freq_bands','std'],params=params)
 
 if __name__ == "__main__":
-    save_stream('test_run')
-    # data=proccess_stream('data/test_runs.csv',SAMPLING_FREQUENCY)
-    # fe = extract_features()
-    # extracted_features=fe.fit_transform(data)
+    # save_stream('test_run')
+    # assign directory
+    directory = 'data'
+    
+    # iterate over files in
+    # that directory
+    X = []
+    Y = []
+    for filename in os.listdir(directory):
+        file = os.path.join(directory, filename)
+        data=proccess_stream(file,SAMPLING_FREQUENCY)
+        fe = extract_features()
+        extracted_features=fe.fit_transform(data)
 
-    # ###
-    # # Just for example, later you need to create a proper label
-    # ###
-    # label = np.zeros(extracted_features.shape[0])
-    # label[0] = 1
-    # label[1] = 2
+        # Set up a label for our data
+        labels=np.ones(extracted_features.shape[0]) * LABEL[file[-5:-4]]
+        X.append(extracted_features)
+        Y.append(labels)
+    X = np.concatenate(X)
+    Y = np.concatenate(Y)
 
-    # classfier=SVC()
-    # classfier.fit(extracted_features,label)
-    # classification_accuracy=classfier.score(extracted_features,label)
-    # print(classification_accuracy)
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    classfier=SVC(probability=True)
+    classfier.fit(X_train,y_train)
+    classification_accuracy=classfier.score(X_test,y_test)
+    print(classification_accuracy)
 
