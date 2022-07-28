@@ -3,8 +3,9 @@ from pylsl import StreamInlet, resolve_stream
 import time
 import pandas as pd
 from mne_features.feature_extraction import FeatureExtractor
- 
+from sklearn.svm import SVC
 
+SAMPLING_FREQUENCY = 200
 def power_spectrum(signal, timestamps):
     dt = np.mean(np.diff(timestamps))
     window_size = timestamps[-1] - timestamps[0]
@@ -19,7 +20,7 @@ def power_spectrum(signal, timestamps):
     return freq[L], PSD[L] / n
 
 
-def save_stream(name: str) -> None:
+def save_stream(name: str,label:str) -> None:
     # Parameter to define the experiment time, in seconds
     recording_length = 120
     # first resolve an EEG stream on the lab network
@@ -40,17 +41,38 @@ def save_stream(name: str) -> None:
     print("Data saved")
 
 
-def proccess_stream(data_path: str,sampling_frequency:int = 200) -> None:
+def proccess_stream(data_path: str,sampling_frequency:int = 200) -> np.ndarray:
+    window_size_in_sec = 2
+
     raw_data = pd.read_csv("data/test_run.csv")
     raw_data = raw_data.drop('0', axis=1).to_numpy().T
-    data_lenght = raw_data.shape[1]
-    window_size_in_sec = 2
-    num_of_windows = round(data_lenght / (window_size_in_sec * sampling_frequency))
+    # This is how many sample we got
+    data_len = raw_data.shape[1]
+    num_of_windows = round(data_len / (window_size_in_sec * sampling_frequency))
+    # We want to remove some data so that we would fit into equal windows
+    raw_data=raw_data[:,:data_len - (data_len % num_of_windows)]
     windows = np.array_split(raw_data, num_of_windows,axis=1)
-    data = np.stack(windows)
-    fe = FeatureExtractor(sfreq=sampling_frequency, selected_funcs=['std'])
+    return np.stack(windows)
 
+def extract_features():
+    params = {'pow_freq_bands__freq_bands': np.array([[8.,12.],[15.,25.]])}
+    return FeatureExtractor(sfreq=SAMPLING_FREQUENCY, selected_funcs=['pow_freq_bands','std'],params=params)
 
 if __name__ == "__main__":
-    # save_stream('test_run')
-    proccess_stream('data/test_run.csv')
+    save_stream('test_run')
+    # data=proccess_stream('data/test_runs.csv',SAMPLING_FREQUENCY)
+    # fe = extract_features()
+    # extracted_features=fe.fit_transform(data)
+
+    # ###
+    # # Just for example, later you need to create a proper label
+    # ###
+    # label = np.zeros(extracted_features.shape[0])
+    # label[0] = 1
+    # label[1] = 2
+
+    # classfier=SVC()
+    # classfier.fit(extracted_features,label)
+    # classification_accuracy=classfier.score(extracted_features,label)
+    # print(classification_accuracy)
+
