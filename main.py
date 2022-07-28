@@ -21,6 +21,15 @@ def power_spectrum(signal, timestamps):
 
 
 def save_stream(name: str,label:str) -> None:
+    """Saves the stream to CSV file
+
+    Parameters
+    ----------
+    name : str
+        Name of the file
+    label : str
+        Should be either l,r,i
+    """
     # Parameter to define the experiment time, in seconds
     recording_length = 120
     # first resolve an EEG stream on the lab network
@@ -37,7 +46,7 @@ def save_stream(name: str,label:str) -> None:
     data = np.array(data)
     timestamps = np.expand_dims(np.array(timestamps), axis=-1)
     # Save the data to csv
-    pd.DataFrame(np.hstack((timestamps, data))).to_csv(f'data/{name}.csv', index=False)
+    pd.DataFrame(np.hstack((timestamps, data))).to_csv(f'data/{name}_{label}.csv', index=False)
     print("Data saved")
 
 
